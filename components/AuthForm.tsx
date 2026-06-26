@@ -37,10 +37,12 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center px-6">
-      <div className="w-full max-w-sm">
-        <Link href="/" className="mb-6 flex items-center justify-center gap-2 text-lg font-bold">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-white">C</span>
+    <main className="relative grid min-h-screen place-items-center overflow-hidden bg-hero-mesh px-6">
+      <div className="pointer-events-none absolute -left-20 top-10 h-72 w-72 rounded-full bg-brand-lime/20 blur-3xl animate-float" />
+      <div className="pointer-events-none absolute -right-10 bottom-0 h-72 w-72 rounded-full bg-energy/15 blur-3xl animate-float [animation-delay:1.5s]" />
+      <div className="relative w-full max-w-sm animate-fade-up">
+        <Link href="/" className="mb-6 flex items-center justify-center gap-2 text-lg font-extrabold tracking-tight">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-gradient text-white shadow-glow">C</span>
           CoachDeck
         </Link>
         <div className="card">

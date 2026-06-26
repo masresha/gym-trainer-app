@@ -30,21 +30,23 @@ export default async function DashboardPage() {
     <div className="min-h-screen">
       <TopNav session={session} />
       <main className="mx-auto max-w-6xl px-6 py-8">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between animate-fade-up">
           <div>
-            <h1 className="text-2xl font-bold">Your clients</h1>
-            <p className="text-sm text-slate-500">Welcome back, {session.name.split(" ")[0]}.</p>
+            <h1 className="text-3xl font-extrabold tracking-tight">
+              Welcome back, <span className="text-gradient">{session.name.split(" ")[0]}</span> 👊
+            </h1>
+            <p className="text-sm text-slate-500">Let&apos;s move your roster forward today.</p>
           </div>
           <AddClientForm />
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <Stat label="Clients" value={clients.length} />
-          <Stat label="Active goals" value={totalActiveGoals} />
-          <Stat label="Workouts awaiting completion" value={pendingWorkouts} />
+        <div className="mt-6 grid gap-4 stagger sm:grid-cols-3">
+          <Stat label="Clients" value={clients.length} icon="🏋️" />
+          <Stat label="Active goals" value={totalActiveGoals} icon="🎯" />
+          <Stat label="Workouts awaiting completion" value={pendingWorkouts} icon="🔥" />
         </div>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-4 stagger md:grid-cols-2 lg:grid-cols-3">
           {clients.length === 0 && (
             <div className="card md:col-span-2 lg:col-span-3 text-center text-slate-500">
               No clients yet. Click <span className="font-semibold">Add client</span> to create your first one.
@@ -53,19 +55,25 @@ export default async function DashboardPage() {
           {clients.map((c) => {
             const lastWeight = c.progressEntries[0]?.weight;
             const pending = c.workoutPlans.filter((w) => w.status === "SENT").length;
+            const initials = c.user.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
             return (
-              <Link key={c.id} href={`/clients/${c.id}`} className="card transition hover:ring-brand/40">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">{c.user.name}</h3>
-                  <span className="badge bg-slate-100 text-slate-600">{c.goals.length} goals</span>
+              <Link key={c.id} href={`/clients/${c.id}`} className="card card-hover group">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-gradient text-sm font-extrabold text-white shadow-glow">
+                    {initials}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate font-bold tracking-tight group-hover:text-brand-dark">{c.user.name}</h3>
+                    <p className="truncate text-sm text-slate-500">{c.user.email}</p>
+                  </div>
+                  <span className="badge bg-brand/10 text-brand-dark">{c.goals.length} goals</span>
                 </div>
-                <p className="mt-1 text-sm text-slate-500">{c.user.email}</p>
-                <div className="mt-4 flex gap-4 text-sm">
-                  <span className="text-slate-600">
-                    {lastWeight != null ? `${lastWeight} kg` : "No weigh-in"}
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+                  <span className="badge bg-slate-100 text-slate-600">
+                    {lastWeight != null ? `⚖️ ${lastWeight} kg` : "No weigh-in"}
                   </span>
                   {pending > 0 && (
-                    <span className="badge bg-amber-100 text-amber-700">{pending} workout(s) pending</span>
+                    <span className="badge bg-energy/15 text-energy">🔥 {pending} pending</span>
                   )}
                 </div>
               </Link>
@@ -77,11 +85,14 @@ export default async function DashboardPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value, icon }: { label: string; value: number; icon: string }) {
   return (
-    <div className="card">
-      <div className="text-3xl font-bold">{value}</div>
-      <div className="text-sm text-slate-500">{label}</div>
+    <div className="card card-hover flex items-center gap-4">
+      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand/10 text-2xl">{icon}</span>
+      <div>
+        <div className="text-3xl font-extrabold tracking-tight text-gradient">{value}</div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      </div>
     </div>
   );
 }

@@ -133,8 +133,12 @@ export default async function ClientPortalPage() {
     <div className="min-h-screen">
       <TopNav session={session} />
       <main className="mx-auto max-w-6xl px-6 py-8">
-        <h1 className="text-2xl font-bold">Hi {session.name.split(" ")[0]} 👋</h1>
-        <p className="mb-6 text-sm text-slate-500">Coached by {client.trainer.name}</p>
+        <div className="mb-6 animate-fade-up">
+          <h1 className="text-3xl font-extrabold tracking-tight">
+            Let&apos;s go, <span className="text-gradient">{session.name.split(" ")[0]}</span> 💥
+          </h1>
+          <p className="text-sm text-slate-500">Coached by {client.trainer.name}</p>
+        </div>
         <Tabs tabs={tabs} />
       </main>
     </div>

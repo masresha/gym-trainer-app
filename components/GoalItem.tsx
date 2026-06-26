@@ -44,10 +44,10 @@ export default function GoalItem({ goal, actions }: { goal: Goal; actions?: Reac
 
       {pct != null && (
         <div className="mt-2">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-            <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${pct}%` }} />
+          <div className="progress-track">
+            <div className="progress-fill" style={{ width: `${pct}%` }} />
           </div>
-          <div className="mt-1 text-right text-xs text-slate-500">{pct}%</div>
+          <div className="mt-1 text-right text-xs font-bold text-slate-500">{pct}%</div>
         </div>
       )}
 

@@ -37,7 +37,7 @@ function exerciseLine(ex: Exercise): string {
 
 export default function WorkoutCard({ plan, action }: { plan: Plan; action?: React.ReactNode }) {
   return (
-    <div className="card">
+    <div className="card card-hover">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h4 className="font-semibold">{plan.title}</h4>

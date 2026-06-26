@@ -126,8 +126,11 @@ function MacroStat({ label, value, target, unit }: { label: string; value: numbe
         <span className="text-xs font-normal text-slate-400">{unit}</span>
       </div>
       {pct != null && (
-        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-          <div className={`h-full ${pct >= 100 ? "bg-amber-500" : "bg-brand"}`} style={{ width: `${pct}%` }} />
+        <div className="progress-track mt-1.5 h-1.5">
+          <div
+            className={`progress-fill ${pct >= 100 ? "!bg-energy-gradient" : ""}`}
+            style={{ width: `${pct}%` }}
+          />
         </div>
       )}
     </div>
