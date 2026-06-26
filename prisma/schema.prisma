@@ -1,0 +1,299 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Pooled connection used by the app at runtime (Neon's -pooler URL on Vercel).
+  url       = env("DATABASE_URL")
+  // Direct (non-pooled) connection used for migrations. Set to the same value as
+  // DATABASE_URL for local/Docker; on Neon use the direct (non-pooler) string.
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  TRAINER
+  CLIENT
+}
+
+enum GoalType {
+  WEIGHT // lose/gain body weight toward a target (kg)
+  STRENGTH // lift a target weight (kg)
+  ENDURANCE // run/row a target distance or time
+  HABIT // e.g. "train 4x per week"
+  CUSTOM
+}
+
+enum GoalStatus {
+  ACTIVE
+  ACHIEVED
+  ARCHIVED
+}
+
+enum WorkoutStatus {
+  SENT // assigned by trainer, not yet done
+  COMPLETED // client logged it as done
+  SKIPPED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(CLIENT)
+  createdAt    DateTime @default(now())
+
+  // If this user is a CLIENT, their profile:
+  clientProfile Client? @relation("UserClient")
+
+  // If this user is a TRAINER, the clients they coach:
+  coachedClients Client[]       @relation("TrainerClients")
+  // Workout plans this trainer authored:
+  authoredPlans  WorkoutPlan[]  @relation("TrainerPlans")
+
+  messagesSent     Message[]         @relation("MessageSender")
+  exerciseLibrary  ExerciseLibrary[]
+  workoutTemplates WorkoutTemplate[]
+  remindersCreated Reminder[]        @relation("ReminderTrainer")
+}
+
+model Client {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation("UserClient", fields: [userId], references: [id], onDelete: Cascade)
+  trainerId   String
+  trainer     User     @relation("TrainerClients", fields: [trainerId], references: [id], onDelete: Cascade)
+  heightCm    Float?
+  startWeight Float? // kg, baseline at intake
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  // Daily macro targets the trainer sets for this client
+  calorieTarget Int?
+  proteinTarget Float?
+  carbTarget    Float?
+  fatTarget     Float?
+
+  // Token a wearable bridge (Apple Health Auto Export, Terra, Fitbit) uses to push samples
+  healthSyncToken String? @unique
+
+  goals           Goal[]
+  workoutPlans    WorkoutPlan[]
+  progressEntries ProgressEntry[]
+  messages        Message[]
+  nutritionEntries NutritionEntry[]
+  reminders       Reminder[]
+  progressPhotos  ProgressPhoto[]
+  healthSamples   HealthSample[]
+
+  @@index([trainerId])
+}
+
+model Goal {
+  id          String     @id @default(cuid())
+  clientId    String
+  client      Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title       String
+  type        GoalType   @default(CUSTOM)
+  startValue  Float?
+  targetValue Float?
+  currentValue Float?
+  unit        String? // kg, reps, km, min, sessions/wk, etc.
+  dueDate     DateTime?
+  status      GoalStatus @default(ACTIVE)
+  createdAt   DateTime   @default(now())
+
+  @@index([clientId])
+}
+
+model WorkoutPlan {
+  id            String        @id @default(cuid())
+  clientId      String
+  client        Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  trainerId     String
+  trainer       User          @relation("TrainerPlans", fields: [trainerId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  scheduledFor  DateTime // the day the client should do this workout
+  status        WorkoutStatus @default(SENT)
+  completedAt   DateTime?
+  clientNote    String? // how it felt, RPE notes
+  perceivedRpe  Int? // 1-10 rate of perceived exertion
+  createdAt     DateTime      @default(now())
+
+  exercises Exercise[]
+
+  @@index([clientId])
+  @@index([trainerId])
+}
+
+model Exercise {
+  id            String      @id @default(cuid())
+  workoutPlanId String
+  workoutPlan   WorkoutPlan @relation(fields: [workoutPlanId], references: [id], onDelete: Cascade)
+  order         Int         @default(0)
+  name          String
+  sets          Int?
+  reps          String? // "8-12" or "30s" — string for flexibility
+  weight        Float? // kg, suggested load
+  restSec       Int?
+  notes         String?
+
+  @@index([workoutPlanId])
+}
+
+model ProgressEntry {
+  id         String   @id @default(cuid())
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date       DateTime @default(now())
+  weight     Float? // kg
+  bodyFatPct Float?
+  note       String?
+
+  @@index([clientId, date])
+}
+
+// ---------------------------------------------------------------------------
+// Messaging — one thread per client (trainer <-> that client). senderId marks
+// the direction of each message.
+// ---------------------------------------------------------------------------
+model Message {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([clientId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Exercise library — reusable, per-trainer exercises with video links.
+// ---------------------------------------------------------------------------
+model ExerciseLibrary {
+  id          String   @id @default(cuid())
+  trainerId   String
+  trainer     User     @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  name        String
+  category    String?
+  videoUrl    String?
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@index([trainerId])
+}
+
+// ---------------------------------------------------------------------------
+// Workout templates & program builder.
+// ---------------------------------------------------------------------------
+model WorkoutTemplate {
+  id          String   @id @default(cuid())
+  trainerId   String
+  trainer     User     @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+
+  exercises TemplateExercise[]
+
+  @@index([trainerId])
+}
+
+model TemplateExercise {
+  id         String          @id @default(cuid())
+  templateId String
+  template   WorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  order      Int             @default(0)
+  name       String
+  sets       Int?
+  reps       String?
+  weight     Float?
+  restSec    Int?
+  notes      String?
+
+  @@index([templateId])
+}
+
+// ---------------------------------------------------------------------------
+// Nutrition / macro logging.
+// ---------------------------------------------------------------------------
+model NutritionEntry {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date      DateTime @default(now())
+  meal      String? // breakfast | lunch | dinner | snack
+  name      String? // food description
+  calories  Int?
+  protein   Float?
+  carbs     Float?
+  fat       Float?
+  createdAt DateTime @default(now())
+
+  @@index([clientId, date])
+}
+
+// ---------------------------------------------------------------------------
+// Reminders — email and/or in-app, dispatched when due.
+// ---------------------------------------------------------------------------
+enum ReminderChannel {
+  EMAIL
+  INAPP
+}
+
+model Reminder {
+  id        String          @id @default(cuid())
+  clientId  String
+  client    Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  trainerId String
+  trainer   User            @relation("ReminderTrainer", fields: [trainerId], references: [id], onDelete: Cascade)
+  title     String
+  message   String?
+  dueAt     DateTime
+  channel   ReminderChannel @default(INAPP)
+  sentAt    DateTime?
+  dismissedAt DateTime?
+  createdAt DateTime        @default(now())
+
+  @@index([clientId, dueAt])
+  @@index([sentAt])
+}
+
+// ---------------------------------------------------------------------------
+// Progress photos.
+// ---------------------------------------------------------------------------
+model ProgressPhoto {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  url       String
+  takenAt   DateTime @default(now())
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([clientId, takenAt])
+}
+
+// ---------------------------------------------------------------------------
+// Wearable / Apple Health samples (ingested via the sync token endpoint).
+// ---------------------------------------------------------------------------
+model HealthSample {
+  id             String   @id @default(cuid())
+  clientId       String
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date           DateTime
+  steps          Int?
+  restingHr      Int?
+  sleepMinutes   Int?
+  activeCalories Int?
+  source         String? // apple_health | fitbit | terra | manual | import
+  createdAt      DateTime @default(now())
+
+  @@unique([clientId, date, source])
+  @@index([clientId, date])
+}
